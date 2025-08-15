@@ -133,15 +133,64 @@ async function handleRegister(e) {
 async function handleInterviewSubmit(e) {
     e.preventDefault();
     
+    // 获取表单元素并检查是否存在
+    const nameEl = document.getElementById('name');
+    const phoneEl = document.getElementById('phone');
+    const emailEl = document.getElementById('email');
+    const positionEl = document.getElementById('position');
+    const experienceEl = document.getElementById('experience');
+    const skillsEl = document.getElementById('skills');
+    const selfIntroEl = document.getElementById('selfIntroduction');
+    
+    // 检查元素是否存在
+    if (!nameEl || !phoneEl || !emailEl || !positionEl || !experienceEl || !skillsEl || !selfIntroEl) {
+        alert('表单元素未找到，请刷新页面重试');
+        return;
+    }
+    
     const formData = {
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        email: document.getElementById('email').value,
-        position: document.getElementById('position').value,
-        experience: document.getElementById('experience').value,
-        skills: document.getElementById('skills').value,
-        self_introduction: document.getElementById('selfIntroduction').value
+        name: nameEl.value.trim(),
+        phone: phoneEl.value.trim(),
+        email: emailEl.value.trim(),
+        position: positionEl.value.trim(),
+        experience: experienceEl.value.trim(),
+        skills: skillsEl.value.trim(),
+        self_introduction: selfIntroEl.value.trim()
     };
+    
+    // 调试信息 - 检查每个字段的值
+    console.log('表单数据:', formData);
+    
+    // 前端验证 - 检查每个字段
+    const emptyFields = [];
+    
+    if (!formData.name) emptyFields.push('姓名');
+    if (!formData.phone) emptyFields.push('联系电话');
+    if (!formData.email) emptyFields.push('邮箱地址');
+    if (!formData.position) emptyFields.push('应聘职位');
+    if (!formData.experience) emptyFields.push('工作经验');
+    if (!formData.skills) emptyFields.push('技能特长');
+    if (!formData.self_introduction) emptyFields.push('自我介绍');
+    
+    if (emptyFields.length > 0) {
+        // 显示详细的调试信息
+        const debugInfo = `请检查以下字段：
+
+${emptyFields.map(field => `❌ ${field}: 未填写`).join('\n')}
+
+已填写的字段：
+${formData.name ? `✅ 姓名: ${formData.name}` : ''}
+${formData.phone ? `✅ 电话: ${formData.phone}` : ''}
+${formData.email ? `✅ 邮箱: ${formData.email}` : ''}
+${formData.position ? `✅ 职位: ${formData.position}` : ''}
+${formData.experience ? `✅ 经验: ${formData.experience.substring(0, 20)}...` : ''}
+${formData.skills ? `✅ 技能: ${formData.skills.substring(0, 20)}...` : ''}
+${formData.self_introduction ? `✅ 自我介绍: ${formData.self_introduction.substring(0, 20)}...` : ''}`;
+        
+        alert(debugInfo);
+        showAlert(`请填写以下必填字段: ${emptyFields.join('、')}`, 'error');
+        return;
+    }
     
     try {
         const data = await window.mysqlAPI.submitInterview(authToken, formData);
@@ -286,24 +335,45 @@ function displayAdminInterviews(interviews) {
 
 // 通过面试
 async function approveInterview(interviewId) {
-    const feedback = document.getElementById(`feedback-${interviewId}`).value;
+    const feedback = document.getElementById(`feedback-${interviewId}`).value.trim();
+    console.log('审核通过:', { interviewId, status: 'approved', feedback });
     await updateInterviewStatus(interviewId, 'approved', feedback);
 }
 
 // 拒绝面试
 async function rejectInterview(interviewId) {
-    const feedback = document.getElementById(`feedback-${interviewId}`).value;
+    const feedback = document.getElementById(`feedback-${interviewId}`).value.trim();
+    console.log('审核拒绝:', { interviewId, status: 'rejected', feedback });
     await updateInterviewStatus(interviewId, 'rejected', feedback);
 }
 
 // 更新面试状态
 async function updateInterviewStatus(interviewId, status, feedback) {
     try {
-        const data = await window.mysqlAPI.updateInterviewStatus(authToken, interviewId, status, feedback);
+        console.log('发送审核请求:', { 
+            interviewId: interviewId, 
+            status: status, 
+            feedback: feedback,
+            token: authToken ? 'exists' : 'missing'
+        });
+        
+        // 验证参数
+        if (!interviewId) {
+            throw new Error('面试ID缺失');
+        }
+        if (!status || !['approved', 'rejected'].includes(status)) {
+            throw new Error(`状态值无效: ${status}`);
+        }
+        if (!authToken) {
+            throw new Error('认证令牌缺失');
+        }
+        
+        const data = await window.mysqlAPI.updateInterviewStatus(authToken, interviewId, status, feedback || '');
         
         showAlert('审核完成！', 'success');
         loadAdminInterviews(); // 重新加载列表
     } catch (error) {
+        console.error('审核失败:', error);
         showAlert(error.message || '操作失败', 'error');
     }
 }
