@@ -13,6 +13,7 @@
     "dev": "nodemon backend/server.js",
     "dev-mysql": "nodemon backend/mysql-server.js",
     "start": "node backend/mysql-server.js",
+    "build": "echo 'No build needed'",
     "heroku-postbuild": "echo 'Build completed'",
     "test": "node test-mysql-connection.js"
   },

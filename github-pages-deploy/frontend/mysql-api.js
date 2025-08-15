@@ -15,8 +15,8 @@ class MySQLAPI {
             return 'http://localhost:3000/api';
         } else if (hostname.includes('netlify.app')) {
             // Netlify部署环境 - 连接Railway后端
-            // 这里将在部署时更新为实际的Railway URL
-            return 'https://your-app-name.up.railway.app/api';
+            // 连接到实际的Railway后端
+            return 'https://web-production-19806.up.railway.app/api';
         } else {
             // 其他环境
             return 'http://localhost:3000/api';
