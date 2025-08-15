@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>线上面试系统</title>
+    <link rel="stylesheet" href="frontend/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>线上面试系统</h1>
+            <nav id="nav">
+                <button id="loginBtn" class="nav-btn">登录</button>
+                <button id="registerBtn" class="nav-btn">注册</button>
+            </nav>
+        </header>
+
+        <main id="main-content">
+            <!-- 欢迎页面 -->
+            <div id="welcome-page" class="page active">
+                <div class="welcome-content">
+                    <h2>欢迎使用线上面试系统</h2>
+                    <p>请先登录或注册账户来开始您的面试申请</p>
+                    <div class="welcome-buttons">
+                        <button class="btn primary" onclick="showLogin()">立即登录</button>
+                        <button class="btn secondary" onclick="showRegister()">注册账户</button>
+                    </div>
+                    <div class="demo-info">
+                        <h3>演示账户</h3>
+                        <p><strong>管理员账户：</strong></p>
+                        <p>用户名：admin，密码：admin123</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 登录页面 -->
+            <div id="login-page" class="page">
+                <div class="form-container">
+                    <h2>用户登录</h2>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="loginUsername">用户名</label>
+                            <input type="text" id="loginUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">密码</label>
+                            <input type="password" id="loginPassword" required>
+                        </div>
+                        <button type="submit" class="btn primary">登录</button>
+                        <p class="form-link">还没有账户？<a href="#" onclick="showRegister()">立即注册</a></p>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 注册页面 -->
+            <div id="register-page" class="page">
+                <div class="form-container">
+                    <h2>用户注册</h2>
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label for="regUsername">用户名</label>
+                            <input type="text" id="regUsername" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">邮箱</label>
+                            <input type="email" id="regEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">密码</label>
+                            <input type="password" id="regPassword" required>
+                        </div>
+                        <button type="submit" class="btn primary">注册</button>
+                        <p class="form-link">已有账户？<a href="#" onclick="showLogin()">立即登录</a></p>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 用户面试页面 -->
+            <div id="interview-page" class="page">
+                <div class="interview-container">
+                    <h2>面试问卷</h2>
+                    <form id="interviewForm">
+                        <div class="form-group">
+                            <label for="name">姓名 *</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">联系电话 *</label>
+                            <input type="tel" id="phone" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">邮箱地址 *</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="position">应聘职位 *</label>
+                            <select id="position" required>
+                                <option value="">请选择职位</option>
+                                <option value="前端工程师">前端工程师</option>
+                                <option value="后端工程师">后端工程师</option>
+                                <option value="全栈工程师">全栈工程师</option>
+                                <option value="产品经理">产品经理</option>
+                                <option value="UI设计师">UI设计师</option>
+                                <option value="测试工程师">测试工程师</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="experience">工作经验 *</label>
+                            <textarea id="experience" rows="4" placeholder="请描述您的工作经验..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="skills">技能特长 *</label>
+                            <textarea id="skills" rows="4" placeholder="请列出您的技能特长..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="selfIntroduction">自我介绍 *</label>
+                            <textarea id="selfIntroduction" rows="6" placeholder="请进行自我介绍..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn primary">提交面试申请</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 我的面试记录页面 -->
+            <div id="my-interviews-page" class="page">
+                <div class="interviews-container">
+                    <h2>我的面试记录</h2>
+                    <div id="myInterviewsList"></div>
+                </div>
+            </div>
+
+            <!-- 管理员页面 -->
+            <div id="admin-page" class="page">
+                <div class="admin-container">
+                    <h2>面试管理</h2>
+                    <div id="adminInterviewsList"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="frontend/mysql-api.js"></script>
+    <script src="frontend/script.js"></script>
+</body>
+</html>
