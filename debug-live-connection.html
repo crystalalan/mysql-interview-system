@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时连接调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .debug-box { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>实时连接调试 - 跨设备同步测试</h1>
+    
+    <div class="debug-box">
+        <h3>当前环境信息</h3>
+        <div id="envInfo"></div>
+    </div>
+    
+    <div class="debug-box">
+        <h3>连接测试</h3>
+        <button onclick="testDirectConnection()">直接测试API连接</button>
+        <button onclick="testCORSConnection()">测试CORS连接</button>
+        <button onclick="testLoginFlow()">测试完整登录流程</button>
+        <button onclick="clearResults()">清除结果</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'https://web-production-19806.up.railway.app/api';
+        
+        // 显示环境信息
+        document.getElementById('envInfo').innerHTML = `
+            <strong>当前域名:</strong> ${window.location.hostname}<br>
+            <strong>完整URL:</strong> ${window.location.href}<br>
+            <strong>API地址:</strong> ${API_BASE}<br>
+            <strong>用户代理:</strong> ${navigator.userAgent.substring(0, 100)}...
+        `;
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            results.appendChild(div);
+            
+            // 自动滚动到底部
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testDirectConnection() {
+            addResult('🔄 开始直接连接测试...', 'info');
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const endTime = Date.now();
+                
+                addResult(`📊 响应时间: ${endTime - startTime}ms`, 'info');
+                addResult(`📋 响应状态: ${response.status} ${response.statusText}`, 'info');
+                
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                addResult(`📋 响应头: <pre>${JSON.stringify(headers, null, 2)}</pre>`, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`✅ 健康检查成功: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    addResult(`❌ 健康检查失败: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ 连接错误: ${error.name} - ${error.message}`, 'error');
+                console.error('连接错误详情:', error);
+            }
+        }
+        
+        async function testCORSConnection() {
+            addResult('🔄 开始CORS连接测试...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`✅ CORS连接成功: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                } else {
+                    addResult(`❌ CORS连接失败: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ CORS错误: ${error.message}`, 'error');
+                
+                // 尝试不同的CORS设置
+                try {
+                    addResult('🔄 尝试简化的CORS设置...', 'info');
+                    const response2 = await fetch(`${API_BASE}/health`, {
+                        method: 'GET'
+                    });
+                    
+                    if (response2.ok) {
+                        const data = await response2.json();
+                        addResult(`✅ 简化CORS成功: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                    }
+                } catch (error2) {
+                    addResult(`❌ 简化CORS也失败: ${error2.message}`, 'error');
+                }
+            }
+        }
+        
+        async function testLoginFlow() {
+            addResult('🔄 开始完整登录流程测试...', 'info');
+            
+            try {
+                // 测试登录
+                const loginResponse = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                if (loginResponse.ok) {
+                    const loginData = await loginResponse.json();
+                    addResult(`✅ 登录成功: ${loginData.user.username} (${loginData.user.role})`, 'success');
+                    
+                    // 测试获取面试记录
+                    try {
+                        const interviewsResponse = await fetch(`${API_BASE}/admin/interviews`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${loginData.token}`
+                            }
+                        });
+                        
+                        if (interviewsResponse.ok) {
+                            const interviews = await interviewsResponse.json();
+                            addResult(`✅ 获取面试记录成功: 共${interviews.length}条记录`, 'success');
+                            
+                            if (interviews.length > 0) {
+                                addResult(`📋 最新记录: <pre>${JSON.stringify(interviews[0], null, 2)}</pre>`, 'info');
+                            }
+                        } else {
+                            addResult(`⚠️ 获取面试记录失败: HTTP ${interviewsResponse.status}`, 'error');
+                        }
+                    } catch (error) {
+                        addResult(`⚠️ 获取面试记录错误: ${error.message}`, 'error');
+                    }
+                    
+                } else {
+                    const errorData = await loginResponse.json();
+                    addResult(`❌ 登录失败: ${errorData.error || '未知错误'}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ 登录流程错误: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载时自动测试
+        window.onload = function() {
+            addResult('🚀 页面加载完成，开始自动测试...', 'info');
+            setTimeout(testDirectConnection, 1000);
+        };
+    </script>
+</body>
+</html>
