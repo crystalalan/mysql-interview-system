@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内嵌API测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>内嵌API功能测试</h1>
+    
+    <div class="info">
+        <p>测试直接内嵌在script.js中的API功能</p>
+    </div>
+    
+    <h2>API对象检查</h2>
+    <button onclick="checkAPI()">检查API对象</button>
+    
+    <h2>登录测试</h2>
+    <input type="text" id="username" placeholder="用户名" value="admin">
+    <input type="password" id="password" placeholder="密码" value="admin123">
+    <button onclick="testLogin()">测试登录</button>
+    
+    <h2>注册测试</h2>
+    <input type="text" id="regUsername" placeholder="新用户名" value="testuser">
+    <input type="email" id="regEmail" placeholder="邮箱" value="test@example.com">
+    <input type="password" id="regPassword" placeholder="密码" value="123456">
+    <button onclick="testRegister()">测试注册</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // 内嵌的简化API类 - 与script.js中的相同
+        class SimpleAPI {
+            constructor() {
+                this.initializeLocalStorage();
+            }
+            
+            initializeLocalStorage() {
+                if (!localStorage.getItem('interview_users')) {
+                    const users = [
+                        {
+                            id: 1,
+                            username: 'admin',
+                            email: 'admin@interview.com',
+                            password: btoa('admin123'),
+                            role: 'admin',
+                            created_at: new Date().toISOString()
+                        }
+                    ];
+                    localStorage.setItem('interview_users', JSON.stringify(users));
+                    localStorage.setItem('interview_submissions', JSON.stringify([]));
+                    localStorage.setItem('interview_nextUserId', '2');
+                    localStorage.setItem('interview_nextSubmissionId', '1');
+                }
+            }
+            
+            async login(credentials) {
+                const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
+                const { username, password } = credentials;
+                const user = users.find(u => u.username === username);
+                
+                if (!user || atob(user.password) !== password) {
+                    throw new Error('用户名或密码错误');
+                }
+                
+                const token = btoa(JSON.stringify({
+                    id: user.id,
+                    username: user.username,
+                    role: user.role,
+                    exp: Date.now() + 24 * 60 * 60 * 1000
+                }));
+                
+                return {
+                    token,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        role: user.role
+                    }
+                };
+            }
+            
+            async register(userData) {
+                const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
+                const { username, email, password } = userData;
+                
+                const existingUser = users.find(u => u.username === username || u.email === email);
+                if (existingUser) {
+                    throw new Error('用户名或邮箱已存在');
+                }
+                
+                const nextUserId = parseInt(localStorage.getItem('interview_nextUserId') || '2');
+                const newUser = {
+                    id: nextUserId,
+                    username,
+                    email,
+                    password: btoa(password),
+                    role: 'user',
+                    created_at: new Date().toISOString()
+                };
+                
+                users.push(newUser);
+                localStorage.setItem('interview_users', JSON.stringify(users));
+                localStorage.setItem('interview_nextUserId', (nextUserId + 1).toString());
+                
+                return { message: '注册成功', userId: nextUserId };
+            }
+        }
+
+        // 创建测试API实例
+        const testAPI = new SimpleAPI();
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            results.appendChild(div);
+        }
+        
+        function checkAPI() {
+            addResult('检查API对象...', 'info');
+            
+            if (typeof testAPI !== 'undefined') {
+                addResult('✅ testAPI对象存在', 'success');
+                
+                if (typeof testAPI.login === 'function') {
+                    addResult('✅ login方法存在', 'success');
+                } else {
+                    addResult('❌ login方法不存在', 'error');
+                }
+                
+                if (typeof testAPI.register === 'function') {
+                    addResult('✅ register方法存在', 'success');
+                } else {
+                    addResult('❌ register方法不存在', 'error');
+                }
+            } else {
+                addResult('❌ testAPI对象不存在', 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                addResult('开始登录测试...', 'info');
+                const result = await testAPI.login({ username, password });
+                addResult(`✅ 登录成功: ${result.user.username} (${result.user.role})`, 'success');
+            } catch (error) {
+                addResult(`❌ 登录失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testRegister() {
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            
+            try {
+                addResult('开始注册测试...', 'info');
+                const result = await testAPI.register({ username, email, password });
+                addResult(`✅ 注册成功: ${result.message}`, 'success');
+            } catch (error) {
+                addResult(`❌ 注册失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 页面加载时自动检查API
+        window.onload = function() {
+            checkAPI();
+        };
+    </script>
+</body>
+</html>
