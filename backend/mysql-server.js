@@ -55,12 +55,12 @@ async function getConnection() {
 async function initializeDatabase() {
     try {
         const connection = await pool.getConnection();
-        
+
         // 设置连接字符编码
         await connection.execute('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
         await connection.execute('SET CHARACTER SET utf8mb4');
         await connection.execute('SET character_set_connection=utf8mb4');
-        
+
         // 创建用户表
         await connection.execute(`
             CREATE TABLE IF NOT EXISTS users (
@@ -139,21 +139,21 @@ const requireAdmin = (req, res, next) => {
 // 用户注册
 app.post('/api/register', async (req, res) => {
     const { username, email, password } = req.body;
-    
+
     if (!username || !email || !password) {
         return res.status(400).json({ error: '所有字段都是必填的' });
     }
 
     try {
         const hashedPassword = bcrypt.hashSync(password, 10);
-        
+
         const connection = await getConnection();
         const [result] = await connection.execute(
             'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
             [username, email, hashedPassword]
         );
         connection.release();
-        
+
         res.json({ message: '注册成功', userId: result.insertId });
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
@@ -167,7 +167,7 @@ app.post('/api/register', async (req, res) => {
 // 用户登录
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    
+
     try {
         const connection = await getConnection();
         const [rows] = await connection.execute(
@@ -175,25 +175,25 @@ app.post('/api/login', async (req, res) => {
             [username]
         );
         connection.release();
-        
+
         if (rows.length === 0 || !bcrypt.compareSync(password, rows[0].password)) {
             return res.status(401).json({ error: '用户名或密码错误' });
         }
-        
+
         const user = rows[0];
         const token = jwt.sign(
             { id: user.id, username: user.username, role: user.role },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
-        
-        res.json({ 
-            token, 
-            user: { 
-                id: user.id, 
-                username: user.username, 
-                role: user.role 
-            } 
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role
+            }
         });
     } catch (error) {
         console.error('登录错误:', error);
@@ -204,11 +204,11 @@ app.post('/api/login', async (req, res) => {
 // 提交面试问卷
 app.post('/api/interview', authenticateToken, async (req, res) => {
     const { name, phone, email, position, experience, skills, self_introduction } = req.body;
-    
+
     if (!name || !phone || !email || !position || !experience || !skills || !self_introduction) {
         return res.status(400).json({ error: '所有字段都是必填的' });
     }
-    
+
     try {
         const connection = await getConnection();
         const [result] = await connection.execute(`
@@ -217,7 +217,7 @@ app.post('/api/interview', authenticateToken, async (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [req.user.id, name, phone, email, position, experience, skills, self_introduction]);
         connection.release();
-        
+
         res.json({ message: '面试问卷提交成功', interviewId: result.insertId });
     } catch (error) {
         console.error('提交面试错误:', error);
@@ -234,7 +234,7 @@ app.get('/api/my-interviews', authenticateToken, async (req, res) => {
             [req.user.id]
         );
         connection.release();
-        
+
         res.json(rows);
     } catch (error) {
         console.error('获取面试记录错误:', error);
@@ -253,7 +253,7 @@ app.get('/api/admin/interviews', authenticateToken, requireAdmin, async (req, re
             ORDER BY i.created_at DESC
         `);
         connection.release();
-        
+
         res.json(rows);
     } catch (error) {
         console.error('获取所有面试记录错误:', error);
@@ -265,11 +265,11 @@ app.get('/api/admin/interviews', authenticateToken, requireAdmin, async (req, re
 app.put('/api/admin/interview/:id', authenticateToken, requireAdmin, async (req, res) => {
     const { status, feedback } = req.body;
     const interviewId = req.params.id;
-    
+
     if (!['approved', 'rejected'].includes(status)) {
         return res.status(400).json({ error: '状态值无效' });
     }
-    
+
     try {
         const connection = await getConnection();
         const [result] = await connection.execute(
@@ -277,11 +277,11 @@ app.put('/api/admin/interview/:id', authenticateToken, requireAdmin, async (req,
             [status, feedback || '', interviewId]
         );
         connection.release();
-        
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: '面试记录不存在' });
         }
-        
+
         res.json({ message: '审核完成' });
     } catch (error) {
         console.error('审核面试错误:', error);

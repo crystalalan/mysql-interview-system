@@ -160,37 +160,60 @@ async function handleInterviewSubmit(e) {
     
     // 调试信息 - 检查每个字段的值
     console.log('表单数据:', formData);
+    console.log('字段长度检查:', {
+        name: formData.name.length,
+        phone: formData.phone.length,
+        email: formData.email.length,
+        position: formData.position.length,
+        experience: formData.experience.length,
+        skills: formData.skills.length,
+        self_introduction: formData.self_introduction.length
+    });
     
     // 前端验证 - 检查每个字段
     const emptyFields = [];
     
-    if (!formData.name) emptyFields.push('姓名');
-    if (!formData.phone) emptyFields.push('联系电话');
-    if (!formData.email) emptyFields.push('邮箱地址');
-    if (!formData.position) emptyFields.push('应聘职位');
-    if (!formData.experience) emptyFields.push('工作经验');
-    if (!formData.skills) emptyFields.push('技能特长');
-    if (!formData.self_introduction) emptyFields.push('自我介绍');
+    // 更严格的验证，检查是否为空或只包含空白字符
+    if (!formData.name || formData.name.length === 0) emptyFields.push('姓名');
+    if (!formData.phone || formData.phone.length === 0) emptyFields.push('联系电话');
+    if (!formData.email || formData.email.length === 0) emptyFields.push('邮箱地址');
+    if (!formData.position || formData.position.length === 0 || formData.position === '请选择职位') emptyFields.push('应聘职位');
+    if (!formData.experience || formData.experience.length === 0) emptyFields.push('工作经验');
+    if (!formData.skills || formData.skills.length === 0) emptyFields.push('技能特长');
+    if (!formData.self_introduction || formData.self_introduction.length === 0) emptyFields.push('自我介绍');
     
     if (emptyFields.length > 0) {
-        // 显示详细的调试信息
-        const debugInfo = `请检查以下字段：
-
-${emptyFields.map(field => `❌ ${field}: 未填写`).join('\n')}
-
-已填写的字段：
-${formData.name ? `✅ 姓名: ${formData.name}` : ''}
-${formData.phone ? `✅ 电话: ${formData.phone}` : ''}
-${formData.email ? `✅ 邮箱: ${formData.email}` : ''}
-${formData.position ? `✅ 职位: ${formData.position}` : ''}
-${formData.experience ? `✅ 经验: ${formData.experience.substring(0, 20)}...` : ''}
-${formData.skills ? `✅ 技能: ${formData.skills.substring(0, 20)}...` : ''}
-${formData.self_introduction ? `✅ 自我介绍: ${formData.self_introduction.substring(0, 20)}...` : ''}`;
-        
-        alert(debugInfo);
         showAlert(`请填写以下必填字段: ${emptyFields.join('、')}`, 'error');
+        
+        // 高亮显示未填写的字段
+        emptyFields.forEach(fieldName => {
+            const fieldMap = {
+                '姓名': 'name',
+                '联系电话': 'phone', 
+                '邮箱地址': 'email',
+                '应聘职位': 'position',
+                '工作经验': 'experience',
+                '技能特长': 'skills',
+                '自我介绍': 'selfIntroduction'
+            };
+            const fieldId = fieldMap[fieldName];
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.style.borderColor = '#ff4444';
+                element.focus();
+            }
+        });
+        
         return;
     }
+    
+    // 清除之前的错误样式
+    ['name', 'phone', 'email', 'position', 'experience', 'skills', 'selfIntroduction'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.borderColor = '';
+        }
+    });
     
     try {
         const data = await window.mysqlAPI.submitInterview(authToken, formData);
