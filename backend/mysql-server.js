@@ -306,9 +306,9 @@ app.get('/api/health', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 服务器运行在 http://localhost:${PORT}`);
-    console.log(`🌐 局域网访问: http://192.168.0.102:${PORT}`);
+    console.log(`🌐 局域网访问: http://192.168.0.105:${PORT}`);
     console.log(`📝 管理员账户: admin / admin123`);
     console.log(`💡 本地访问: http://localhost:${PORT}`);
-    console.log(`📱 手机访问: http://192.168.0.102:${PORT}`);
+    console.log(`📱 手机访问: http://192.168.0.105:${PORT}`);
     console.log(`🔍 健康检查: http://localhost:${PORT}/api/health`);
 });

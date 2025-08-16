@@ -32,6 +32,6 @@ Write-Host "2. 等待2-3分钟让Railway完成部署"
 Write-Host "3. 然后运行 .\update-frontend.ps1 更新前端"
 Write-Host ""
 Write-Host "🌐 Railway项目地址: https://railway.app/dashboard" -ForegroundColor Blue
-Write-Host "📊 查看部署状态: https://web-production-19806.up.railway.app/api/health" -ForegroundColor Blue
+Write-Host "查看部署状态: https://web-production-19806.up.railway.app/api/health" -ForegroundColor Blue
 Write-Host ""
-Read-Host "按回车键继续..."
+pause
