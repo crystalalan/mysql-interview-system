@@ -84,13 +84,29 @@ class MySQLAPI {
             return data;
         } catch (error) {
             console.error('API请求失败:', error);
+            console.error('请求详情:', {
+                url: `${this.API_BASE}${endpoint}`,
+                method: options.method || 'GET',
+                headers: options.headers
+            });
+            
             // 如果网络请求失败，回退到本地存储
-            if (error.name === 'TypeError' || error.message.includes('fetch')) {
-                console.log('网络错误，使用本地存储');
+            if (error.name === 'TypeError' || error.message.includes('fetch') || error.message.includes('NetworkError')) {
+                console.log('网络错误，使用本地存储备选方案');
                 this.connected = false;
+                this.initializeLocalStorage();
                 return this.handleLocalRequest(endpoint, options);
             }
-            throw error;
+            
+            // 如果是CORS错误，也回退到本地存储
+            if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
+                console.log('CORS错误，使用本地存储备选方案');
+                this.connected = false;
+                this.initializeLocalStorage();
+                return this.handleLocalRequest(endpoint, options);
+            }
+            
+            throw new Error(`网络错误，请稍后重试: ${error.message}`);
         }
     }
 
