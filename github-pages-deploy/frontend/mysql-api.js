@@ -24,17 +24,34 @@ class MySQLAPI {
 
     // 初始化连接
     async initializeConnection() {
+        console.log('🔄 正在初始化API连接...', this.API_BASE);
+        
         try {
-            const response = await fetch(`${this.API_BASE}/health`);
+            // 设置较短的超时时间
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+            
+            const response = await fetch(`${this.API_BASE}/health`, {
+                signal: controller.signal,
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
             if (response.ok) {
                 const data = await response.json();
                 console.log('✅ MySQL数据库连接成功:', data);
                 this.connected = true;
+                return;
             } else {
-                throw new Error('健康检查失败');
+                throw new Error(`健康检查失败: HTTP ${response.status}`);
             }
         } catch (error) {
             console.log('⚠️ MySQL连接失败，使用本地存储备选方案');
+            console.log('错误详情:', error.message);
             this.connected = false;
             this.initializeLocalStorage();
         }

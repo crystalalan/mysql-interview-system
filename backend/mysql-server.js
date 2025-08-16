@@ -9,37 +9,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// 中间件配置 - 更宽松的CORS设置
+// 中间件配置 - 简化的CORS设置
 app.use(cors({
-    origin: function (origin, callback) {
-        // 允许的域名列表
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'https://remarkable-conkies-39365e.netlify.app',
-            'https://crystalalan.github.io'
-        ];
-        
-        // 允许没有origin的请求（如移动应用、Postman等）
-        if (!origin) return callback(null, true);
-        
-        // 检查是否是允许的域名或子域名
-        const isAllowed = allowedOrigins.some(allowedOrigin => 
-            origin === allowedOrigin || 
-            origin.endsWith('.netlify.app') || 
-            origin.endsWith('.github.io')
-        );
-        
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            console.log('CORS blocked origin:', origin);
-            callback(null, true); // 临时允许所有域名进行调试
-        }
-    },
-    credentials: true,
+    origin: '*', // 临时允许所有域名
+    credentials: false, // 暂时禁用credentials
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
 }));
+
+// 手动处理预检请求
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.sendStatus(200);
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
