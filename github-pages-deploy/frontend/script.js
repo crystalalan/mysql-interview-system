@@ -22,37 +22,53 @@ class HybridAPI {
     // 初始化云端连接
     async initializeConnection() {
         console.log('🔄 正在连接云端数据库...', this.API_BASE);
+        console.log('🌐 当前域名:', window.location.hostname);
         
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
-            
-            const response = await fetch(`${this.API_BASE}/health`, {
-                signal: controller.signal,
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ 云端数据库连接成功:', data);
-                this.connected = true;
+        // 强制尝试云端连接，不使用本地存储作为默认
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`🔄 连接尝试 ${attempt}/3`);
                 
-                // 显示连接状态
-                this.showConnectionStatus('云端数据库已连接，数据可跨设备同步', 'success');
-                return;
-            } else {
-                throw new Error(`健康检查失败: HTTP ${response.status}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+                
+                const response = await fetch(`${this.API_BASE}/health`, {
+                    signal: controller.signal,
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                console.log(`📊 响应状态: ${response.status} ${response.statusText}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ 云端数据库连接成功:', data);
+                    this.connected = true;
+                    
+                    // 显示连接状态
+                    this.showConnectionStatus(`云端数据库已连接 (尝试${attempt}/3)，数据可跨设备同步`, 'success');
+                    return;
+                } else {
+                    throw new Error(`健康检查失败: HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.log(`❌ 连接尝试 ${attempt} 失败:`, error.message);
+                
+                if (attempt === 3) {
+                    console.log('⚠️ 所有连接尝试失败，使用本地存储模式');
+                    this.connected = false;
+                    this.showConnectionStatus('云端连接失败，使用本地存储模式（数据仅在当前浏览器可用）', 'warning');
+                } else {
+                    // 等待2秒后重试
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
-        } catch (error) {
-            console.log('⚠️ 云端连接失败，使用本地存储模式');
-            console.log('错误详情:', error.message);
-            this.connected = false;
-            this.showConnectionStatus('使用本地存储模式，数据仅在当前浏览器可用', 'warning');
         }
     }
     
@@ -133,46 +149,57 @@ class HybridAPI {
     }
     
     async login(credentials) {
-        // 优先尝试云端登录
-        if (this.connected) {
-            try {
-                console.log('🌐 使用云端登录');
-                return await this.makeCloudRequest('/login', {
-                    method: 'POST',
-                    body: JSON.stringify(credentials)
-                });
-            } catch (error) {
-                console.log('云端登录失败，回退到本地存储:', error.message);
-                this.connected = false;
-                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+        console.log('🔐 开始登录流程...');
+        console.log('🔗 连接状态:', this.connected ? '云端' : '本地');
+        
+        // 总是先尝试云端登录，即使连接状态显示为false
+        try {
+            console.log('🌐 尝试云端登录...');
+            const result = await this.makeCloudRequest('/login', {
+                method: 'POST',
+                body: JSON.stringify(credentials)
+            });
+            
+            // 云端登录成功，更新连接状态
+            if (!this.connected) {
+                this.connected = true;
+                this.showConnectionStatus('云端连接已恢复，数据可跨设备同步', 'success');
             }
-        }
-        
-        // 本地存储登录
-        console.log('💾 使用本地存储登录');
-        const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
-        const { username, password } = credentials;
-        const user = users.find(u => u.username === username);
-        
-        if (!user || atob(user.password) !== password) {
-            throw new Error('用户名或密码错误');
-        }
-        
-        const token = btoa(JSON.stringify({
-            id: user.id,
-            username: user.username,
-            role: user.role,
-            exp: Date.now() + 24 * 60 * 60 * 1000
-        }));
-        
-        return {
-            token,
-            user: {
+            
+            console.log('✅ 云端登录成功');
+            return result;
+            
+        } catch (error) {
+            console.log('❌ 云端登录失败:', error.message);
+            this.connected = false;
+            this.showConnectionStatus('云端连接失败，使用本地模式', 'warning');
+            
+            // 回退到本地存储登录
+            console.log('💾 回退到本地存储登录');
+            const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
+            const { username, password } = credentials;
+            const user = users.find(u => u.username === username);
+            
+            if (!user || atob(user.password) !== password) {
+                throw new Error('用户名或密码错误');
+            }
+            
+            const token = btoa(JSON.stringify({
                 id: user.id,
                 username: user.username,
-                role: user.role
-            }
-        };
+                role: user.role,
+                exp: Date.now() + 24 * 60 * 60 * 1000
+            }));
+            
+            return {
+                token,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    role: user.role
+                }
+            };
+        }
     }
     
     async register(userData) {
