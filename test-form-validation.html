@@ -1,17 +1,42 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>表单验证测试</title>
     <style>
-        .form-group { margin: 10px 0; }
-        label { display: block; margin-bottom: 5px; }
-        input, select, textarea { width: 100%; padding: 8px; margin-bottom: 10px; }
-        .error { border-color: #ff4444 !important; }
-        .btn { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .form-group {
+            margin: 10px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        .error {
+            border-color: #ff4444 !important;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body>
     <h2>面试表单验证测试</h2>
     <form id="testForm">
@@ -54,9 +79,9 @@
     <div id="result" style="margin-top: 20px; padding: 10px; background: #f0f0f0;"></div>
 
     <script>
-        document.getElementById('testForm').addEventListener('submit', function(e) {
+        document.getElementById('testForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             // 获取表单数据
             const formData = {
                 name: document.getElementById('name').value.trim(),
@@ -67,12 +92,12 @@
                 skills: document.getElementById('skills').value.trim(),
                 self_introduction: document.getElementById('selfIntroduction').value.trim()
             };
-            
+
             console.log('表单数据:', formData);
-            
+
             // 验证字段
             const emptyFields = [];
-            
+
             if (!formData.name || formData.name.length === 0) emptyFields.push('姓名');
             if (!formData.phone || formData.phone.length === 0) emptyFields.push('联系电话');
             if (!formData.email || formData.email.length === 0) emptyFields.push('邮箱地址');
@@ -80,9 +105,9 @@
             if (!formData.experience || formData.experience.length === 0) emptyFields.push('工作经验');
             if (!formData.skills || formData.skills.length === 0) emptyFields.push('技能特长');
             if (!formData.self_introduction || formData.self_introduction.length === 0) emptyFields.push('自我介绍');
-            
+
             const resultDiv = document.getElementById('result');
-            
+
             if (emptyFields.length > 0) {
                 resultDiv.innerHTML = `
                     <h3 style="color: red;">验证失败</h3>
@@ -90,12 +115,12 @@
                     <h4>详细信息:</h4>
                     <pre>${JSON.stringify(formData, null, 2)}</pre>
                 `;
-                
+
                 // 高亮错误字段
                 emptyFields.forEach(fieldName => {
                     const fieldMap = {
                         '姓名': 'name',
-                        '联系电话': 'phone', 
+                        '联系电话': 'phone',
                         '邮箱地址': 'email',
                         '应聘职位': 'position',
                         '工作经验': 'experience',
@@ -114,7 +139,7 @@
                     <h4>提交的数据:</h4>
                     <pre>${JSON.stringify(formData, null, 2)}</pre>
                 `;
-                
+
                 // 清除错误样式
                 ['name', 'phone', 'email', 'position', 'experience', 'skills', 'selfIntroduction'].forEach(id => {
                     document.getElementById(id).classList.remove('error');
@@ -123,4 +148,5 @@
         });
     </script>
 </body>
+
 </html>

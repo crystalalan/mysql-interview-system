@@ -13,13 +13,12 @@ class MySQLAPI {
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             // 本地开发环境
             return 'http://localhost:3000/api';
-        } else if (hostname.includes('netlify.app')) {
-            // Netlify部署环境 - 连接Railway后端
-            // 连接到实际的Railway后端
+        } else if (hostname.includes('netlify.app') || hostname.includes('github.io')) {
+            // 部署环境 - 连接Railway后端
             return 'https://web-production-19806.up.railway.app/api';
         } else {
-            // 其他环境
-            return 'http://localhost:3000/api';
+            // 其他环境，默认连接Railway
+            return 'https://web-production-19806.up.railway.app/api';
         }
     }
 

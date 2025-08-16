@@ -9,12 +9,36 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// 中间件配置
+// 中间件配置 - 更宽松的CORS设置
 app.use(cors({
-    origin: ['http://localhost:3000', 'https://remarkable-conkies-39365e.netlify.app', 'https://*.netlify.app'],
+    origin: function (origin, callback) {
+        // 允许的域名列表
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'https://remarkable-conkies-39365e.netlify.app',
+            'https://crystalalan.github.io'
+        ];
+        
+        // 允许没有origin的请求（如移动应用、Postman等）
+        if (!origin) return callback(null, true);
+        
+        // 检查是否是允许的域名或子域名
+        const isAllowed = allowedOrigins.some(allowedOrigin => 
+            origin === allowedOrigin || 
+            origin.endsWith('.netlify.app') || 
+            origin.endsWith('.github.io')
+        );
+        
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            console.log('CORS blocked origin:', origin);
+            callback(null, true); // 临时允许所有域名进行调试
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(express.json({ limit: '10mb' }));
