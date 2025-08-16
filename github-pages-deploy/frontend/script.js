@@ -1,7 +1,116 @@
-// 内嵌的简化API类
-class SimpleAPI {
+// 混合API类 - 优先使用云端数据库，回退到本地存储
+class HybridAPI {
     constructor() {
+        this.API_BASE = this.detectAPIBase();
+        this.connected = false;
         this.initializeLocalStorage();
+        this.initializeConnection();
+    }
+    
+    // 检测API基础URL
+    detectAPIBase() {
+        const hostname = window.location.hostname;
+        
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:3000/api';
+        } else {
+            // 生产环境连接Railway后端
+            return 'https://web-production-19806.up.railway.app/api';
+        }
+    }
+    
+    // 初始化云端连接
+    async initializeConnection() {
+        console.log('🔄 正在连接云端数据库...', this.API_BASE);
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
+            
+            const response = await fetch(`${this.API_BASE}/health`, {
+                signal: controller.signal,
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ 云端数据库连接成功:', data);
+                this.connected = true;
+                
+                // 显示连接状态
+                this.showConnectionStatus('云端数据库已连接，数据可跨设备同步', 'success');
+                return;
+            } else {
+                throw new Error(`健康检查失败: HTTP ${response.status}`);
+            }
+        } catch (error) {
+            console.log('⚠️ 云端连接失败，使用本地存储模式');
+            console.log('错误详情:', error.message);
+            this.connected = false;
+            this.showConnectionStatus('使用本地存储模式，数据仅在当前浏览器可用', 'warning');
+        }
+    }
+    
+    // 显示连接状态
+    showConnectionStatus(message, type) {
+        // 移除现有状态提示
+        const existingStatus = document.querySelector('.connection-status');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+        
+        // 创建状态提示
+        const statusDiv = document.createElement('div');
+        statusDiv.className = `connection-status alert ${type}`;
+        statusDiv.innerHTML = `
+            <strong>${type === 'success' ? '🌐' : '💾'} 连接状态:</strong> ${message}
+            ${type === 'warning' ? '<br><small>如需跨设备同步，请检查网络连接后刷新页面</small>' : ''}
+        `;
+        statusDiv.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            max-width: 300px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            ${type === 'success' ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;'}
+        `;
+        
+        document.body.appendChild(statusDiv);
+        
+        // 5秒后自动隐藏
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // 发送HTTP请求到云端
+    async makeCloudRequest(endpoint, options = {}) {
+        const response = await fetch(`${this.API_BASE}${endpoint}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            mode: 'cors',
+            ...options
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        return data;
     }
     
     initializeLocalStorage() {
@@ -24,6 +133,23 @@ class SimpleAPI {
     }
     
     async login(credentials) {
+        // 优先尝试云端登录
+        if (this.connected) {
+            try {
+                console.log('🌐 使用云端登录');
+                return await this.makeCloudRequest('/login', {
+                    method: 'POST',
+                    body: JSON.stringify(credentials)
+                });
+            } catch (error) {
+                console.log('云端登录失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储登录
+        console.log('💾 使用本地存储登录');
         const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
         const { username, password } = credentials;
         const user = users.find(u => u.username === username);
@@ -50,6 +176,23 @@ class SimpleAPI {
     }
     
     async register(userData) {
+        // 优先尝试云端注册
+        if (this.connected) {
+            try {
+                console.log('🌐 使用云端注册');
+                return await this.makeCloudRequest('/register', {
+                    method: 'POST',
+                    body: JSON.stringify(userData)
+                });
+            } catch (error) {
+                console.log('云端注册失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储注册
+        console.log('💾 使用本地存储注册');
         const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
         const { username, email, password } = userData;
         
@@ -76,6 +219,26 @@ class SimpleAPI {
     }
     
     async submitInterview(token, interviewData) {
+        // 优先尝试云端提交
+        if (this.connected) {
+            try {
+                console.log('🌐 使用云端提交面试申请');
+                return await this.makeCloudRequest('/interview', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(interviewData)
+                });
+            } catch (error) {
+                console.log('云端提交失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储提交
+        console.log('💾 使用本地存储提交');
         const tokenData = JSON.parse(atob(token));
         const submissions = JSON.parse(localStorage.getItem('interview_submissions') || '[]');
         const nextId = parseInt(localStorage.getItem('interview_nextSubmissionId') || '1');
@@ -98,12 +261,50 @@ class SimpleAPI {
     }
     
     async getMyInterviews(token) {
+        // 优先尝试云端获取
+        if (this.connected) {
+            try {
+                console.log('🌐 从云端获取我的面试记录');
+                return await this.makeCloudRequest('/my-interviews', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (error) {
+                console.log('云端获取失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储获取
+        console.log('💾 从本地存储获取面试记录');
         const tokenData = JSON.parse(atob(token));
         const submissions = JSON.parse(localStorage.getItem('interview_submissions') || '[]');
         return submissions.filter(s => s.user_id === tokenData.id);
     }
     
     async getAllInterviews(token) {
+        // 优先尝试云端获取
+        if (this.connected) {
+            try {
+                console.log('🌐 从云端获取所有面试记录');
+                return await this.makeCloudRequest('/admin/interviews', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (error) {
+                console.log('云端获取失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储获取
+        console.log('💾 从本地存储获取所有面试记录');
         const tokenData = JSON.parse(atob(token));
         if (tokenData.role !== 'admin') {
             throw new Error('权限不足');
@@ -112,6 +313,26 @@ class SimpleAPI {
     }
     
     async updateInterviewStatus(token, interviewId, status, feedback) {
+        // 优先尝试云端更新
+        if (this.connected) {
+            try {
+                console.log('🌐 在云端更新面试状态');
+                return await this.makeCloudRequest(`/admin/interview/${interviewId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status, feedback })
+                });
+            } catch (error) {
+                console.log('云端更新失败，回退到本地存储:', error.message);
+                this.connected = false;
+                this.showConnectionStatus('云端连接中断，切换到本地模式', 'warning');
+            }
+        }
+        
+        // 本地存储更新
+        console.log('💾 在本地存储更新面试状态');
         const tokenData = JSON.parse(atob(token));
         if (tokenData.role !== 'admin') {
             throw new Error('权限不足');
@@ -132,10 +353,20 @@ class SimpleAPI {
         
         return { message: '审核完成' };
     }
+    
+    // 获取连接状态
+    getConnectionStatus() {
+        return {
+            connected: this.connected,
+            apiBase: this.API_BASE,
+            mode: this.connected ? '云端数据库' : '本地存储',
+            timestamp: new Date().toISOString()
+        };
+    }
 }
 
 // 创建全局API实例
-window.mysqlAPI = new SimpleAPI();
+window.mysqlAPI = new HybridAPI();
 
 // 全局变量
 let currentUser = null;
