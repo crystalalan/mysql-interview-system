@@ -164,14 +164,23 @@ async function handleInterviewSubmit(e) {
     e.preventDefault();
     
     const formData = {
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        email: document.getElementById('email').value,
-        position: document.getElementById('position').value,
-        experience: document.getElementById('experience').value,
-        skills: document.getElementById('skills').value,
-        self_introduction: document.getElementById('selfIntroduction').value
+        name: document.getElementById('name').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        position: document.getElementById('position').value.trim(),
+        experience: document.getElementById('experience').value.trim(),
+        skills: document.getElementById('skills').value.trim(),
+        self_introduction: document.getElementById('selfIntroduction').value.trim()
     };
+    
+    // 验证所有字段是否已填写
+    const requiredFields = ['name', 'phone', 'email', 'position', 'experience', 'skills', 'self_introduction'];
+    const emptyFields = requiredFields.filter(field => !formData[field]);
+    
+    if (emptyFields.length > 0) {
+        showAlert('请填写所有必填字段', 'error');
+        return;
+    }
     
     try {
         const response = await fetch(`${API_BASE}/interview`, {
@@ -351,26 +360,45 @@ function displayAdminInterviews(interviews) {
 
 // 通过面试
 async function approveInterview(interviewId) {
-    const feedback = document.getElementById(`feedback-${interviewId}`).value;
+    const feedback = document.getElementById(`feedback-${interviewId}`).value.trim();
     await updateInterviewStatus(interviewId, 'approved', feedback);
 }
 
 // 拒绝面试
 async function rejectInterview(interviewId) {
-    const feedback = document.getElementById(`feedback-${interviewId}`).value;
+    const feedback = document.getElementById(`feedback-${interviewId}`).value.trim();
     await updateInterviewStatus(interviewId, 'rejected', feedback);
 }
 
 // 更新面试状态
 async function updateInterviewStatus(interviewId, status, feedback) {
+    // 验证状态值
+    if (!['approved', 'rejected'].includes(status)) {
+        showAlert('状态值无效', 'error');
+        return;
+    }
+    
+    // 验证面试ID
+    if (!interviewId || isNaN(interviewId)) {
+        showAlert('面试ID无效', 'error');
+        return;
+    }
+    
     try {
+        const requestBody = { 
+            status: status, 
+            feedback: feedback || '' 
+        };
+        
+        console.log('发送审核请求:', { interviewId, requestBody });
+        
         const response = await fetch(`${API_BASE}/admin/interview/${interviewId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ status, feedback })
+            body: JSON.stringify(requestBody)
         });
         
         const data = await response.json();
@@ -379,9 +407,11 @@ async function updateInterviewStatus(interviewId, status, feedback) {
             showAlert('审核完成！', 'success');
             loadAdminInterviews(); // 重新加载列表
         } else {
+            console.error('审核失败:', data);
             showAlert(data.error || '操作失败', 'error');
         }
     } catch (error) {
+        console.error('网络错误:', error);
         showAlert('网络错误，请稍后重试', 'error');
     }
 }

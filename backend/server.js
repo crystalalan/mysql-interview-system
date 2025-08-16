@@ -170,8 +170,16 @@ app.put('/api/admin/interview/:id', authenticateToken, requireAdmin, (req, res) 
   const { status, feedback } = req.body;
   const interviewId = parseInt(req.params.id);
   
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: '状态值无效' });
+  console.log('收到审核请求:', { interviewId, status, feedback });
+  
+  // 验证面试ID
+  if (isNaN(interviewId) || interviewId <= 0) {
+    return res.status(400).json({ error: '面试ID无效' });
+  }
+  
+  // 验证状态值
+  if (!status || !['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: '状态值无效，只能是 approved 或 rejected' });
   }
   
   const interviewIndex = interviews.findIndex(i => i.id === interviewId);
@@ -180,10 +188,25 @@ app.put('/api/admin/interview/:id', authenticateToken, requireAdmin, (req, res) 
     return res.status(404).json({ error: '面试记录不存在' });
   }
   
+  // 检查面试是否已经审核过
+  if (interviews[interviewIndex].status !== 'pending') {
+    return res.status(400).json({ error: '该面试已经审核过了' });
+  }
+  
   interviews[interviewIndex].status = status;
   interviews[interviewIndex].feedback = feedback || '';
+  interviews[interviewIndex].updated_at = new Date().toISOString();
   
-  res.json({ message: '审核完成' });
+  console.log('审核完成:', interviews[interviewIndex]);
+  
+  res.json({ 
+    message: '审核完成',
+    interview: {
+      id: interviews[interviewIndex].id,
+      status: interviews[interviewIndex].status,
+      feedback: interviews[interviewIndex].feedback
+    }
+  });
 });
 
 // 根路径重定向到前端
