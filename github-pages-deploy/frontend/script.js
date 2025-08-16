@@ -1,3 +1,142 @@
+// 内嵌的简化API类
+class SimpleAPI {
+    constructor() {
+        this.initializeLocalStorage();
+    }
+    
+    initializeLocalStorage() {
+        if (!localStorage.getItem('interview_users')) {
+            const users = [
+                {
+                    id: 1,
+                    username: 'admin',
+                    email: 'admin@interview.com',
+                    password: btoa('admin123'),
+                    role: 'admin',
+                    created_at: new Date().toISOString()
+                }
+            ];
+            localStorage.setItem('interview_users', JSON.stringify(users));
+            localStorage.setItem('interview_submissions', JSON.stringify([]));
+            localStorage.setItem('interview_nextUserId', '2');
+            localStorage.setItem('interview_nextSubmissionId', '1');
+        }
+    }
+    
+    async login(credentials) {
+        const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
+        const { username, password } = credentials;
+        const user = users.find(u => u.username === username);
+        
+        if (!user || atob(user.password) !== password) {
+            throw new Error('用户名或密码错误');
+        }
+        
+        const token = btoa(JSON.stringify({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            exp: Date.now() + 24 * 60 * 60 * 1000
+        }));
+        
+        return {
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role
+            }
+        };
+    }
+    
+    async register(userData) {
+        const users = JSON.parse(localStorage.getItem('interview_users') || '[]');
+        const { username, email, password } = userData;
+        
+        const existingUser = users.find(u => u.username === username || u.email === email);
+        if (existingUser) {
+            throw new Error('用户名或邮箱已存在');
+        }
+        
+        const nextUserId = parseInt(localStorage.getItem('interview_nextUserId') || '2');
+        const newUser = {
+            id: nextUserId,
+            username,
+            email,
+            password: btoa(password),
+            role: 'user',
+            created_at: new Date().toISOString()
+        };
+        
+        users.push(newUser);
+        localStorage.setItem('interview_users', JSON.stringify(users));
+        localStorage.setItem('interview_nextUserId', (nextUserId + 1).toString());
+        
+        return { message: '注册成功', userId: nextUserId };
+    }
+    
+    async submitInterview(token, interviewData) {
+        const tokenData = JSON.parse(atob(token));
+        const submissions = JSON.parse(localStorage.getItem('interview_submissions') || '[]');
+        const nextId = parseInt(localStorage.getItem('interview_nextSubmissionId') || '1');
+        
+        const submission = {
+            id: nextId,
+            user_id: tokenData.id,
+            username: tokenData.username,
+            ...interviewData,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            feedback: null
+        };
+        
+        submissions.push(submission);
+        localStorage.setItem('interview_submissions', JSON.stringify(submissions));
+        localStorage.setItem('interview_nextSubmissionId', (nextId + 1).toString());
+        
+        return { message: '面试申请提交成功', submissionId: nextId };
+    }
+    
+    async getMyInterviews(token) {
+        const tokenData = JSON.parse(atob(token));
+        const submissions = JSON.parse(localStorage.getItem('interview_submissions') || '[]');
+        return submissions.filter(s => s.user_id === tokenData.id);
+    }
+    
+    async getAllInterviews(token) {
+        const tokenData = JSON.parse(atob(token));
+        if (tokenData.role !== 'admin') {
+            throw new Error('权限不足');
+        }
+        return JSON.parse(localStorage.getItem('interview_submissions') || '[]');
+    }
+    
+    async updateInterviewStatus(token, interviewId, status, feedback) {
+        const tokenData = JSON.parse(atob(token));
+        if (tokenData.role !== 'admin') {
+            throw new Error('权限不足');
+        }
+        
+        const submissions = JSON.parse(localStorage.getItem('interview_submissions') || '[]');
+        const submission = submissions.find(s => s.id === parseInt(interviewId));
+        
+        if (!submission) {
+            throw new Error('面试记录不存在');
+        }
+        
+        submission.status = status;
+        submission.feedback = feedback;
+        submission.updated_at = new Date().toISOString();
+        
+        localStorage.setItem('interview_submissions', JSON.stringify(submissions));
+        
+        return { message: '审核完成' };
+    }
+}
+
+// 创建全局API实例
+window.mysqlAPI = new SimpleAPI();
+
 // 全局变量
 let currentUser = null;
 let authToken = null;
