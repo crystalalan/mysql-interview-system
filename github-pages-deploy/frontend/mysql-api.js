@@ -3,6 +3,13 @@ class MySQLAPI {
     constructor() {
         // 自动检测环境
         this.API_BASE = this.detectAPIBase();
+        
+        // 临时强制使用本地存储模式
+        console.log('🔧 临时启用本地存储模式');
+        this.connected = false;
+        this.initializeLocalStorage();
+        
+        // 异步尝试连接后端，但不阻塞初始化
         this.initializeConnection();
     }
 
